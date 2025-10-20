@@ -48,6 +48,12 @@ export class ApprovalCanvas extends LitElement {
       position: relative;
       width: 100%;
       height: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 200px);
+      gap: 30px;
+      padding: 20px;
+      align-content: start;
+      justify-content: start;
     }
 
     .connections-layer {
@@ -421,30 +427,13 @@ export class ApprovalCanvas extends LitElement {
   private addNode(type: string, position: Position): void {
     if (!this.workflow) return;
 
-    // Use dynamic viewport size for positioning with better spacing
-    const nodeCount = this.workflow.nodes.length;
-    const gridSize = 180; // Reduced spacing for more compact layout
-    const startX = 80;
-    const startY = 80;
-    const { width: maxWidth, height: maxHeight } = this.viewportSize;
-    
-    // Calculate position with better wrapping based on actual viewport
-    const x = startX + (nodeCount * gridSize) % (maxWidth - 200);
-    const y = startY + Math.floor((nodeCount * gridSize) / (maxWidth - 200)) * 80;
-    
-    // Ensure we don't go beyond viewport bounds
-    const finalPosition: Position = {
-      x: Math.min(x, maxWidth - 200), // Ensure node fits within viewport
-      y: Math.min(y, maxHeight - 100)
-    };
-    
-    console.log(`Adding node ${nodeCount + 1} at position:`, finalPosition, 'viewport:', this.viewportSize);
+    console.log(`Adding node of type: ${type}`);
 
     const node: ApprovalNode = {
       id: `node_${Date.now()}`,
       type: type as any,
       name: this.getDefaultNodeName(type),
-      position: finalPosition,
+      position: { x: 0, y: 0 }, // CSS Grid will handle positioning
       configuration: this.getDefaultConfiguration(type),
       createdAt: new Date(),
       updatedAt: new Date()
@@ -540,126 +529,6 @@ export class ApprovalCanvas extends LitElement {
     console.log('Added test node at position:', testPosition);
   }
 
-  private createSampleWorkflow(): void {
-    if (!this.workflow) return;
-
-    console.log('📋 Creating realistic demo workflow...');
-
-    // Clear existing nodes
-    this.workflow.nodes = [];
-    this.workflow.connections = [];
-
-    // Create a realistic purchase approval workflow
-    const nodes = [
-      { 
-        type: 'start', 
-        name: 'Employee Submits Purchase Request', 
-        x: 100, 
-        y: 150,
-        config: { description: 'Employee fills out purchase request form' }
-      },
-      { 
-        type: 'approver', 
-        name: 'Direct Manager Approval', 
-        x: 300, 
-        y: 150,
-        config: { 
-          approver: 'Sarah Johnson', 
-          approvalType: 'single', 
-          timeout: 24,
-          description: 'Direct manager reviews and approves request'
-        }
-      },
-      { 
-        type: 'condition', 
-        name: 'Amount > $5,000?', 
-        x: 500, 
-        y: 150,
-        config: { 
-          field: 'amount', 
-          operator: '>', 
-          value: 5000,
-          description: 'Check if amount exceeds $5,000 threshold'
-        }
-      },
-      { 
-        type: 'approver', 
-        name: 'Finance Director Approval', 
-        x: 700, 
-        y: 150,
-        config: { 
-          approver: 'Michael Chen', 
-          approvalType: 'single', 
-          timeout: 48,
-          description: 'Finance director approval for high-value purchases'
-        }
-      },
-      { 
-        type: 'end', 
-        name: 'Purchase Order Generated', 
-        x: 900, 
-        y: 150,
-        config: { description: 'System generates purchase order and notifies vendor' }
-      }
-    ];
-
-    console.log('📋 Creating', nodes.length, 'nodes...');
-
-    // Add nodes in order
-    nodes.forEach((nodeData, index) => {
-      const node: ApprovalNode = {
-        id: `node_${Date.now()}_${index}`,
-        type: nodeData.type as any,
-        name: nodeData.name,
-        position: { x: nodeData.x, y: nodeData.y },
-        configuration: nodeData.config || this.getDefaultConfiguration(nodeData.type),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      this.workflow!.nodes.push(node);
-      console.log(`📋 Created node ${index + 1}: ${node.name} at (${node.position.x}, ${node.position.y})`);
-    });
-
-    // Add connections to show the flow
-    const connections = [
-      { 
-        id: `conn_${this.workflow.nodes[0].id}_to_${this.workflow.nodes[1].id}`,
-        from: this.workflow.nodes[0].id, 
-        to: this.workflow.nodes[1].id,
-        type: 'approval' as const
-      },
-      { 
-        id: `conn_${this.workflow.nodes[1].id}_to_${this.workflow.nodes[2].id}`,
-        from: this.workflow.nodes[1].id, 
-        to: this.workflow.nodes[2].id,
-        type: 'approval' as const
-      },
-      { 
-        id: `conn_${this.workflow.nodes[2].id}_to_${this.workflow.nodes[3].id}`,
-        from: this.workflow.nodes[2].id, 
-        to: this.workflow.nodes[3].id,
-        type: 'approval' as const
-      },
-      { 
-        id: `conn_${this.workflow.nodes[3].id}_to_${this.workflow.nodes[4].id}`,
-        from: this.workflow.nodes[3].id, 
-        to: this.workflow.nodes[4].id,
-        type: 'approval' as const
-      }
-    ];
-
-    this.workflow.connections = connections;
-
-    console.log('📋 Created', connections.length, 'connections');
-    console.log('📋 Final workflow:', {
-      nodes: this.workflow.nodes.length,
-      connections: this.workflow.connections.length
-    });
-
-    eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
-    this.requestUpdate();
-    console.log('✅ Created sample approval workflow with proper order');
-  }
 
   private autoArrange(): void {
     if (!this.workflow || this.workflow.nodes.length === 0) {
@@ -729,37 +598,7 @@ export class ApprovalCanvas extends LitElement {
           <div class="canvas"
                @click=${this.onCanvasClick}>
         
-        <!-- Canvas Header -->
-            <div class="canvas-header">
-              <h3>${this.workflow.name}</h3>
-              <p>${this.workflow.nodes.length} nodes, ${this.workflow.connections.length} connections</p>
-              <p style="font-size: 0.75rem; color: #6b7280; margin: 0.25rem 0 0 0;">
-                💡 Try: 1) Click 📋 for sample workflow 2) Click elements in left panel to add 3) Use ⬆️⬇️ to reorder
-              </p>
-              <p style="font-size: 0.7rem; color: #9ca3af; margin: 0.25rem 0 0 0;">
-                📱 Viewport: ${this.viewportSize.width}×${this.viewportSize.height} | Canvas: ${this.canvasSize.width}×${this.canvasSize.height}
-              </p>
-            </div>
 
-        <!-- Canvas Controls -->
-        <div class="canvas-controls">
-          <button @click=${() => this.addNode('start', { x: 0, y: 0 })} title="Add Start">🚀</button>
-          <button @click=${() => this.addNode('approver', { x: 0, y: 0 })} title="Add Approver">👤</button>
-          <button @click=${() => this.addNode('condition', { x: 0, y: 0 })} title="Add Condition">❓</button>
-          <button @click=${() => this.addNode('end', { x: 0, y: 0 })} title="Add End">🏁</button>
-          <button @click=${this.clearCanvas} title="Clear Canvas" style="background: #dc3545;">🗑️</button>
-          <button @click=${this.spreadNodes} title="Spread Nodes" style="background: #17a2b8;">📐</button>
-          <button @click=${this.debugPositions} title="Debug Positions" style="background: #28a745;">🐛</button>
-          <button @click=${() => this.addTestNode()} title="Add Test Node" style="background: #6f42c1;">🧪</button>
-          <button @click=${this.createSampleWorkflow} title="Create Sample Workflow" style="background: #fd7e14;">📋</button>
-          <button @click=${this.autoArrange} title="Auto Arrange" style="background: #20c997;">🔄</button>
-              <button @click=${this.debugConnections} title="Debug Connections" style="background: #6c757d;">🔗</button>
-              <button @click=${this.debugEverything} title="Debug Everything" style="background: #e83e8c;">🐛</button>
-              <button @click=${this.onZoomOut} title="Zoom Out">🔍-</button>
-              <button @click=${this.onZoomIn} title="Zoom In">🔍+</button>
-              <button @click=${this.onFitToScreen} title="Fit to Screen">📐</button>
-              <button @click=${this.repositionAllNodes} title="Fit to Viewport" style="background: #17a2b8;">📱</button>
-        </div>
 
         <!-- Drop Zone -->
         <div class="drop-zone"></div>

@@ -11,13 +11,13 @@ export class ApprovalNode extends LitElement {
 
   static styles = css`
     :host {
-      position: absolute;
+      position: relative;
       z-index: 10;
     }
 
     .node {
-      position: absolute;
-      width: 200px;
+      position: relative;
+      width: 160px;
       min-height: 80px;
       background: #ffffff;
       border: 2px solid #d1d5db;
@@ -396,8 +396,7 @@ export class ApprovalNode extends LitElement {
 
     return html`
       <div 
-        class="node ${this.node.type} ${this.isSelected ? 'selected' : ''} ${this.isDragging ? 'dragging' : ''}"
-        style="left: ${this.node.position.x}px; top: ${this.node.position.y}px;">
+        class="node ${this.node.type} ${this.isSelected ? 'selected' : ''} ${this.isDragging ? 'dragging' : ''}">
         
         <!-- Node Header -->
         <div class="node-header">

@@ -118,6 +118,59 @@ export class ApprovalBuilder extends LitElement {
       color: #d97706;
     }
 
+    .workflow-info {
+      background: #f8f9fa;
+      border-bottom: 1px solid #e9ecef;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .workflow-title h3 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .workflow-title p {
+      margin: 0.25rem 0 0 0;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .workflow-tools {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .workflow-tools button {
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      background: rgba(255, 255, 255, 0.9);
+      color: #374151;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+
+    .workflow-tools button:hover {
+      background: #f9fafb;
+      border-color: #9ca3af;
+    }
+
+    .workflow-hints p {
+      margin: 0;
+      font-size: 0.75rem;
+      color: #6b7280;
+      font-style: italic;
+    }
+
     .canvas-container {
       flex: 1;
       position: relative;
@@ -242,6 +295,187 @@ export class ApprovalBuilder extends LitElement {
     return '✅ Valid workflow';
   }
 
+  private addNode(type: 'start' | 'end' | 'approver' | 'condition' | 'parallel'): void {
+    // Create a new workflow if none exists
+    if (!this.workflow) {
+      this.workflow = {
+        id: 'new-workflow',
+        name: 'New Workflow',
+        description: 'A new approval workflow',
+        version: '1.0.0',
+        nodes: [],
+        connections: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+    }
+    
+    const node = {
+      id: `node_${Date.now()}`,
+      type: type,
+      name: this.getDefaultNodeName(type),
+      position: { x: 0, y: 0 },
+      configuration: this.getDefaultConfiguration(type),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    this.workflow.nodes.push(node);
+    eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
+    this.requestUpdate();
+  }
+
+  private getDefaultNodeName(type: 'start' | 'end' | 'approver' | 'condition' | 'parallel'): string {
+    const names = {
+      'start': 'Start',
+      'end': 'End',
+      'approver': 'Approver',
+      'condition': 'Condition',
+      'parallel': 'Parallel Approvers'
+    };
+    return names[type as keyof typeof names] || 'Node';
+  }
+
+  private getDefaultConfiguration(type: 'start' | 'end' | 'approver' | 'condition' | 'parallel'): any {
+    const configs = {
+      'approver': { approvalType: 'single', timeout: 7 },
+      'condition': { conditionType: 'amount', operator: 'greaterThan' },
+      'parallel': { approvalType: 'all', timeout: 7, parallelCount: 2 },
+      'start': {},
+      'end': {}
+    };
+    return configs[type as keyof typeof configs] || {};
+  }
+
+  private clearCanvas(): void {
+    if (this.workflow) {
+      this.workflow.nodes = [];
+      this.workflow.connections = [];
+      eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
+      this.requestUpdate();
+    }
+  }
+
+  private createSampleWorkflow(): void {
+    console.log('📋 Create Sample Workflow button clicked!');
+    alert('Create Sample Workflow button clicked!');
+    
+    // Create a new workflow if none exists
+    if (!this.workflow) {
+      console.log('📋 Creating new workflow...');
+      this.workflow = {
+        id: 'sample-workflow',
+        name: 'Sample Approval Flow',
+        description: 'A sample purchase approval workflow',
+        version: '1.0.0',
+        nodes: [],
+        connections: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+    } else {
+      console.log('📋 Clearing existing workflow...');
+      // Clear existing nodes
+      this.workflow.nodes = [];
+      this.workflow.connections = [];
+    }
+
+    // Create a realistic purchase approval workflow - CSS Grid will handle positioning
+    const nodes = [
+      { 
+        type: 'start', 
+        name: 'Employee Submits Purchase Request', 
+        x: 0, 
+        y: 0,
+        config: { description: 'Employee fills out purchase request form' }
+      },
+      { 
+        type: 'approver', 
+        name: 'Direct Manager Approval', 
+        x: 0, 
+        y: 0,
+        config: { 
+          approver: 'Sarah Johnson', 
+          approvalType: 'single', 
+          timeout: 24,
+          description: 'Direct manager reviews and approves request'
+        }
+      },
+      { 
+        type: 'condition', 
+        name: 'Amount > $5,000?', 
+        x: 0, 
+        y: 0,
+        config: { 
+          field: 'amount', 
+          operator: '>', 
+          value: 5000,
+          description: 'Check if amount exceeds $5,000 threshold'
+        }
+      },
+      { 
+        type: 'approver', 
+        name: 'Finance Director Approval', 
+        x: 0, 
+        y: 0,
+        config: { 
+          approver: 'Michael Chen', 
+          approvalType: 'single', 
+          timeout: 48,
+          description: 'Finance director approval for high-value purchases'
+        }
+      },
+      { 
+        type: 'end', 
+        name: 'Purchase Order Generated', 
+        x: 0, 
+        y: 0,
+        config: { description: 'System generates purchase order and notifies vendor' }
+      }
+    ];
+
+    // Add nodes
+    console.log('📋 Creating', nodes.length, 'nodes...');
+    nodes.forEach((nodeData, index) => {
+      const node = {
+        id: `node_${Date.now()}_${Math.random()}`,
+        type: nodeData.type as 'start' | 'end' | 'approver' | 'condition' | 'parallel',
+        name: nodeData.name,
+        position: { x: nodeData.x, y: nodeData.y },
+        configuration: nodeData.config,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      this.workflow!.nodes.push(node);
+      console.log(`📋 Created node ${index + 1}: ${node.name} (${node.type})`);
+    });
+    console.log('📋 Total nodes created:', this.workflow.nodes.length);
+
+    console.log('📋 Emitting workflow update event...');
+    eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
+    console.log('📋 Requesting update...');
+    this.requestUpdate();
+    console.log('✅ Sample workflow creation completed!');
+  }
+
+  private autoArrange(): void {
+    if (!this.workflow || this.workflow.nodes.length === 0) return;
+
+    // Sort nodes by type priority (start first, end last)
+    const typePriority = { 'start': 0, 'approver': 1, 'condition': 2, 'parallel': 3, 'end': 4 };
+    const sortedNodes = [...this.workflow.nodes].sort((a, b) => {
+      const aPriority = typePriority[a.type] ?? 5;
+      const bPriority = typePriority[b.type] ?? 5;
+      return aPriority - bPriority;
+    });
+
+    // CSS Grid will handle positioning automatically
+    this.workflow.nodes = sortedNodes;
+
+    eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
+    this.requestUpdate();
+  }
+
   render() {
     return html`
       <div class="approval-builder">
@@ -268,6 +502,28 @@ export class ApprovalBuilder extends LitElement {
               ${this.getStatusText()}
             </div>
           </div>
+
+          <!-- Workflow Info with Tool Buttons -->
+          ${this.workflow ? html`
+            <div class="workflow-info">
+              <div class="workflow-title">
+                <h3>${this.workflow.name}</h3>
+                <p>${this.workflow.nodes.length} nodes, ${this.workflow.connections.length} connections</p>
+              </div>
+              <div class="workflow-tools">
+                <button @click=${() => this.addNode('start')} title="Add Start">🚀</button>
+                <button @click=${() => this.addNode('approver')} title="Add Approver">👤</button>
+                <button @click=${() => this.addNode('condition')} title="Add Condition">❓</button>
+                <button @click=${() => this.addNode('end')} title="Add End">🏁</button>
+                <button @click=${() => this.clearCanvas()} title="Clear Canvas" style="background: #dc3545;">🗑️</button>
+                <button @click=${() => this.createSampleWorkflow()} title="Create Sample Workflow" style="background: #fd7e14;">📋</button>
+                <button @click=${() => this.autoArrange()} title="Auto Arrange" style="background: #20c997;">🔄</button>
+              </div>
+              <div class="workflow-hints">
+                <p>💡 Try: 1) Click 📋 for sample workflow 2) Click elements in left panel to add 3) Use ⬆️⬇️ to reorder</p>
+              </div>
+            </div>
+          ` : ''}
 
           <!-- Canvas Container -->
           <div class="canvas-container">
