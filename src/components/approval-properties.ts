@@ -212,6 +212,35 @@ export class ApprovalProperties extends LitElement {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+    .form-fields-preview {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 0.375rem;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .form-field {
+      padding: 0.5rem;
+      margin: 0.25rem 0;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      color: #374151;
+    }
+
+    .form-note {
+      margin-top: 0.75rem;
+      padding: 0.5rem;
+      background: #eff6ff;
+      border: 1px solid #dbeafe;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      color: #1e40af;
+      line-height: 1.4;
+    }
   `;
 
   connectedCallback() {
@@ -253,6 +282,11 @@ export class ApprovalProperties extends LitElement {
   private onTimeoutChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.updateNodeProperty('configuration.timeout', parseInt(input.value));
+  }
+
+  private onTriggerSourceChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.updateNodeProperty('configuration.triggerSource', select.value);
   }
 
   private onConditionTypeChange(event: Event): void {
@@ -481,6 +515,10 @@ export class ApprovalProperties extends LitElement {
   }
 
   private renderDefaultProperties(): any {
+    if (this.selectedNode?.type === 'start') {
+      return this.renderStartProperties();
+    }
+    
     return html`
       <div class="property-group">
         <label class="property-label">Node Name</label>
@@ -489,6 +527,46 @@ export class ApprovalProperties extends LitElement {
           class="property-input"
           .value=${this.selectedNode?.name || ''}
           @input=${this.onNameChange}>
+      </div>
+    `;
+  }
+
+  private renderStartProperties(): any {
+    return html`
+      <div class="property-group">
+        <label class="property-label">Node Name</label>
+        <input 
+          type="text" 
+          class="property-input"
+          .value=${this.selectedNode?.name || ''}
+          @input=${this.onNameChange}>
+      </div>
+      
+      <div class="property-group">
+        <label class="property-label">Trigger Source</label>
+        <select class="property-select" @change=${this.onTriggerSourceChange}>
+          <option value="catalog" ?selected=${this.selectedNode?.configuration.triggerSource === 'catalog'}>
+            ServiceNow Catalog Item
+          </option>
+          <option value="form" ?selected=${this.selectedNode?.configuration.triggerSource === 'form'}>
+            Custom Form
+          </option>
+          <option value="api" ?selected=${this.selectedNode?.configuration.triggerSource === 'api'}>
+            API Call
+          </option>
+        </select>
+      </div>
+      
+      <div class="property-group">
+        <label class="property-label">Form Fields</label>
+        <div class="form-fields-preview">
+          <div class="form-field">📝 Item Description</div>
+          <div class="form-field">💰 Estimated Cost</div>
+          <div class="form-field">📊 Quantity</div>
+          <div class="form-field">🏢 Business Justification</div>
+          <div class="form-field">🏪 Vendor Information</div>
+        </div>
+        <p class="form-note">💡 Employee fills out ServiceNow catalog form, which triggers this workflow</p>
       </div>
     `;
   }

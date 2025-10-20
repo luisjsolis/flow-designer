@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: '/flow-designer/',
   server: {
     port: 1000,
     host: true
