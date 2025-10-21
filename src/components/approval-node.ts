@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ApprovalNode, Position } from '../types';
+import { eventBus, EVENTS } from '../utils/event-bus';
 
 @customElement('approval-node')
 export class ApprovalNode extends LitElement {
@@ -87,12 +88,9 @@ export class ApprovalNode extends LitElement {
     .node-actions {
       display: flex;
       gap: 0.25rem;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .node:hover .node-actions {
-      opacity: 1;
+      justify-content: center;
+      padding: 0.5rem;
+      border-top: 1px solid #e5e7eb;
     }
 
     .node-actions button {
@@ -201,12 +199,63 @@ export class ApprovalNode extends LitElement {
         super.connectedCallback();
         this.addEventListener('click', this.onNodeClick);
         this.addEventListener('dblclick', this.onDoubleClick);
+        this.setupEventListeners();
       }
 
       disconnectedCallback() {
         super.disconnectedCallback();
         this.removeEventListener('click', this.onNodeClick);
         this.removeEventListener('dblclick', this.onDoubleClick);
+        this.removeEventListeners();
+      }
+
+      private setupEventListeners(): void {
+        // Listen for property changes from the properties panel
+        this.addEventListener('property-changed', this.onPropertyChanged);
+        // Also listen via event bus for broader communication
+        eventBus.on('property-changed', this.onPropertyChangedEventBus);
+      }
+
+      private removeEventListeners(): void {
+        this.removeEventListener('property-changed', this.onPropertyChanged);
+        eventBus.off('property-changed', this.onPropertyChangedEventBus);
+      }
+
+      private onPropertyChanged = (event: CustomEvent): void => {
+        const { nodeId, path, value } = event.detail;
+        if (nodeId === this.node?.id) {
+          this.updateNodeProperty(path, value);
+        }
+      }
+
+      private onPropertyChangedEventBus = (data: { nodeId: string; path: string; value: any }): void => {
+        if (data.nodeId === this.node?.id) {
+          this.updateNodeProperty(data.path, data.value);
+        }
+      }
+
+      private updateNodeProperty(path: string, value: any): void {
+        if (!this.node) return;
+
+        const keys = path.split('.');
+        let current: any = this.node;
+        
+        // Navigate to the parent object
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!current[keys[i]]) {
+            current[keys[i]] = {};
+          }
+          current = current[keys[i]];
+        }
+        
+        // Set the new value
+        current[keys[keys.length - 1]] = value;
+        this.node.updatedAt = new Date();
+        
+        // Force a re-render to reflect the changes
+        this.requestUpdate();
+        
+        console.log(`🔄 Node ${this.node.name} updated: ${path} = ${value}`);
       }
 
   private onNodeClick(event: MouseEvent): void {
@@ -347,6 +396,31 @@ export class ApprovalNode extends LitElement {
     }
   }
 
+  private getConditionDisplayText(): string {
+    if (!this.node.configuration.conditionType || !this.node.configuration.operator || !this.node.configuration.value) {
+      return 'Set Condition';
+    }
+
+    const conditionType = this.node.configuration.conditionType;
+    const operator = this.node.configuration.operator;
+    const value = this.node.configuration.value;
+
+    const operatorText = {
+      'greaterThan': '>',
+      'lessThan': '<',
+      'equals': '='
+    }[operator] || operator;
+
+    return `${conditionType} ${operatorText} ${value}`;
+  }
+
+  private getParallelDisplayText(): string {
+    const count = this.node.configuration.parallelCount || 2;
+    const approvalType = this.node.configuration.approvalType || 'all';
+    const typeText = approvalType === 'all' ? 'All must approve' : 'Any can approve';
+    return `${count} approvers - ${typeText}`;
+  }
+
   private renderNodeContent(): any {
     switch (this.node.type) {
       case 'approver':
@@ -357,6 +431,7 @@ export class ApprovalNode extends LitElement {
             </div>
             <div class="approval-type">
               ${this.node.configuration.approvalType || 'single'} approval
+              ${this.node.configuration.timeout ? `(${this.node.configuration.timeout}d timeout)` : ''}
             </div>
           </div>
         `;
@@ -365,7 +440,7 @@ export class ApprovalNode extends LitElement {
         return html`
           <div class="condition-info">
             <div class="condition-text">
-              ${this.node.condition?.description || 'Set Condition'}
+              ${this.getConditionDisplayText()}
             </div>
           </div>
         `;
@@ -374,7 +449,16 @@ export class ApprovalNode extends LitElement {
         return html`
           <div class="parallel-info">
             <div class="parallel-count">
-              ${this.node.configuration.parallelCount || 2} approvers
+              ${this.getParallelDisplayText()}
+            </div>
+          </div>
+        `;
+      
+      case 'start':
+        return html`
+          <div class="node-info">
+            <div class="condition-text">
+              ${this.node.configuration.triggerSource || 'Trigger Source'}
             </div>
           </div>
         `;
@@ -402,12 +486,6 @@ export class ApprovalNode extends LitElement {
         <div class="node-header">
           <div class="node-icon">${this.getNodeIcon()}</div>
           <div class="node-title">${this.node.name}</div>
-          <div class="node-actions">
-            <button @click=${this.onMoveUp} title="Move Up">⬆️</button>
-            <button @click=${this.onMoveDown} title="Move Down">⬇️</button>
-            <button @click=${this.onEdit} title="Edit">✏️</button>
-            <button @click=${this.onDelete} class="delete" title="Delete">🗑️</button>
-          </div>
         </div>
         
         <!-- Step Number -->
@@ -416,6 +494,14 @@ export class ApprovalNode extends LitElement {
         <!-- Node Content -->
         <div class="node-content">
           ${this.renderNodeContent()}
+        </div>
+
+        <!-- Node Actions (centered overlay) -->
+        <div class="node-actions">
+          <button @click=${this.onMoveUp} title="Move Up">⬆️</button>
+          <button @click=${this.onMoveDown} title="Move Down">⬇️</button>
+          <button @click=${this.onEdit} title="Edit">✏️</button>
+          <button @click=${this.onDelete} class="delete" title="Delete">🗑️</button>
         </div>
 
             <!-- Connection points removed for static layout -->

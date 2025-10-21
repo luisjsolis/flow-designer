@@ -158,16 +158,23 @@ export class ApprovalCanvas extends LitElement {
     eventBus.on(EVENTS.NODE_ADDED, this.onNodeAdded.bind(this));
     eventBus.on(EVENTS.NODE_DELETED, this.onNodeDeleted.bind(this));
     eventBus.on(EVENTS.NODE_MOVED, this.onNodeMoved.bind(this));
-        eventBus.on('node-move-up', this.onNodeMoveUpEventBus.bind(this));
-        eventBus.on('node-move-down', this.onNodeMoveDownEventBus.bind(this));
-        eventBus.on('template-add', this.onTemplateAdd.bind(this));
-        eventBus.on('node-type-add', this.onNodeTypeAdd.bind(this));
+    eventBus.on(EVENTS.WORKFLOW_UPDATED, this.onWorkflowUpdated.bind(this));
+    eventBus.on('node-move-up', this.onNodeMoveUpEventBus.bind(this));
+    eventBus.on('node-move-down', this.onNodeMoveDownEventBus.bind(this));
+    eventBus.on('template-add', this.onTemplateAdd.bind(this));
+    eventBus.on('node-type-add', this.onNodeTypeAdd.bind(this));
+    // Listen for property changes to update the workflow
+    this.addEventListener('property-changed', this.onPropertyChanged);
+    eventBus.on('property-changed', this.onPropertyChangedEventBus);
   }
 
   private removeEventListeners(): void {
     eventBus.off(EVENTS.NODE_ADDED, this.onNodeAdded.bind(this));
     eventBus.off(EVENTS.NODE_DELETED, this.onNodeDeleted.bind(this));
     eventBus.off(EVENTS.NODE_MOVED, this.onNodeMoved.bind(this));
+    eventBus.off(EVENTS.WORKFLOW_UPDATED, this.onWorkflowUpdated.bind(this));
+    this.removeEventListener('property-changed', this.onPropertyChanged);
+    eventBus.off('property-changed', this.onPropertyChangedEventBus);
   }
 
   private setupResizeObserver(): void {
@@ -280,6 +287,12 @@ export class ApprovalCanvas extends LitElement {
     }
   }
 
+  private onWorkflowUpdated(workflow: ApprovalWorkflow): void {
+    console.log('🔄 Workflow updated in canvas:', workflow.nodes.length, 'nodes');
+    this.workflow = workflow;
+    this.requestUpdate();
+  }
+
   private onNodeMoveUp = (event: CustomEvent): void => {
     console.log('🔄 Canvas received move-up event:', event.detail);
     this.moveNode(event.detail.node, -1);
@@ -308,6 +321,43 @@ export class ApprovalCanvas extends LitElement {
   private onNodeTypeAdd = (data: { nodeType: string }): void => {
     console.log('➕ Adding node type to workflow:', data.nodeType);
     this.addNode(data.nodeType, { x: 0, y: 0 });
+  }
+
+  private onPropertyChanged = (event: CustomEvent): void => {
+    const { nodeId, path, value } = event.detail;
+    this.updateWorkflowNodeProperty(nodeId, path, value);
+  }
+
+  private onPropertyChangedEventBus = (data: { nodeId: string; path: string; value: any }): void => {
+    this.updateWorkflowNodeProperty(data.nodeId, data.path, data.value);
+  }
+
+  private updateWorkflowNodeProperty(nodeId: string, path: string, value: any): void {
+    if (!this.workflow) return;
+
+    const node = this.workflow.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    const keys = path.split('.');
+    let current: any = node;
+    
+    // Navigate to the parent object
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!current[keys[i]]) {
+        current[keys[i]] = {};
+      }
+      current = current[keys[i]];
+    }
+    
+    // Set the new value
+    current[keys[keys.length - 1]] = value;
+    node.updatedAt = new Date();
+    this.workflow.updatedAt = new Date();
+    
+    // Emit workflow updated event to notify other components
+    eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
+    
+    console.log(`🔄 Workflow updated: Node ${node.name} - ${path} = ${value}`);
   }
 
   private moveNode(node: ApprovalNode, direction: number): void {
