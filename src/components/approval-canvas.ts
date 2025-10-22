@@ -291,6 +291,22 @@ export class ApprovalCanvas extends LitElement {
     console.log('🔄 Workflow updated in canvas:', workflow.nodes.length, 'nodes');
     this.workflow = workflow;
     this.requestUpdate();
+    
+    // Force all nodes to recalculate their step numbers
+    setTimeout(() => {
+      this.updateAllStepNumbers();
+    }, 100);
+  }
+
+  private updateAllStepNumbers(): void {
+    const allNodes = this.shadowRoot?.querySelectorAll('approval-node');
+    if (allNodes) {
+      allNodes.forEach((node: any) => {
+        if (node.forceStepNumberUpdate) {
+          node.forceStepNumberUpdate();
+        }
+      });
+    }
   }
 
   private onNodeMoveUp = (event: CustomEvent): void => {
@@ -363,36 +379,37 @@ export class ApprovalCanvas extends LitElement {
   private moveNode(node: ApprovalNode, direction: number): void {
     if (!this.workflow) return;
 
-    // Sort nodes by x position to get current order
-    const sortedNodes = [...this.workflow.nodes].sort((a, b) => a.position.x - b.position.x);
-    const currentIndex = sortedNodes.findIndex(n => n.id === node.id);
+    // Find the current index of the node in the workflow array
+    const currentIndex = this.workflow.nodes.findIndex(n => n.id === node.id);
     
-    console.log('🔄 Current node order:', sortedNodes.map(n => `${n.name} (${n.position.x})`));
+    console.log('🔄 Current node order:', this.workflow.nodes.map(n => n.name));
     console.log('🔄 Moving node:', node.name, 'from index:', currentIndex, 'direction:', direction);
 
     if (currentIndex === -1) {
-      console.log('❌ Node not found in sorted list');
+      console.log('❌ Node not found in workflow');
       return;
     }
 
     const newIndex = currentIndex + direction;
-    if (newIndex < 0 || newIndex >= sortedNodes.length) {
+    if (newIndex < 0 || newIndex >= this.workflow.nodes.length) {
       console.log('❌ Cannot move node - would be out of bounds');
       return;
     }
 
-    // Swap positions
-    const tempX = node.position.x;
-    node.position.x = sortedNodes[newIndex].position.x;
-    sortedNodes[newIndex].position.x = tempX;
+    // Remove the node from its current position
+    const [movedNode] = this.workflow.nodes.splice(currentIndex, 1);
+    
+    // Insert it at the new position
+    this.workflow.nodes.splice(newIndex, 0, movedNode);
 
-    console.log('🔄 New positions:', sortedNodes.map(n => `${n.name} (${n.position.x})`));
+    console.log('🔄 New node order:', this.workflow.nodes.map(n => n.name));
 
     // Update connections
     this.updateConnections();
     
     eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
     this.requestUpdate();
+    console.log('✅ Node moved successfully');
   }
 
   private updateConnections(): void {

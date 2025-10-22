@@ -346,22 +346,16 @@ export class ApprovalNode extends LitElement {
   }
 
   private calculateStepNumber(): string {
-    // Get the step number based on node position (left to right)
+    // Get the step number based on the node's index in the workflow
+    // Since we're using CSS Grid, we'll use the workflow order instead of position
     const canvas = this.shadowRoot?.host.parentElement;
     if (!canvas) return '?';
     
-    // Get all approval-node elements and sort by their actual position
+    // Get all approval-node elements and find this node's index
     const allNodes = canvas.querySelectorAll('approval-node');
-    const sortedNodes = Array.from(allNodes).sort((a, b) => {
-      // Get the actual position from the node's data, not just the style
-      const aElement = a as any;
-      const bElement = b as any;
-      const aPos = aElement.node?.position?.x || parseInt(a.style.left) || 0;
-      const bPos = bElement.node?.position?.x || parseInt(b.style.left) || 0;
-      return aPos - bPos;
-    });
+    const nodeArray = Array.from(allNodes);
+    const index = nodeArray.indexOf(this.shadowRoot?.host);
     
-    const index = sortedNodes.indexOf(this.shadowRoot?.host);
     const stepNumber = index >= 0 ? (index + 1).toString() : '?';
     
     // Cache the result
