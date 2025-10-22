@@ -203,10 +203,12 @@ export class ApprovalPalette extends LitElement {
   }
 
   private onNodeTypeClick(nodeType: string): void {
-    console.log('Node type clicked:', nodeType);
+    console.log('🎯 PALETTE: Node type clicked:', nodeType);
+    console.log('🎯 PALETTE: Emitting node-type-add event');
     // Emit event to add node to workflow
     import('../utils/event-bus.js').then(({ eventBus }) => {
       eventBus.emit('node-type-add', { nodeType });
+      console.log('🎯 PALETTE: Event emitted successfully');
     });
   }
 

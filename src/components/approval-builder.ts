@@ -9,6 +9,7 @@ export class ApprovalBuilder extends LitElement {
   @property({ type: Object }) workflow: ApprovalWorkflow | null = null;
   @state() private isLoading = false;
   @state() private selectedNodeId: string | null = null;
+  private eventListenersSetup = false;
 
   static styles = css`
     :host {
@@ -218,15 +219,30 @@ export class ApprovalBuilder extends LitElement {
 
   private boundOnNodeSelected = this.onNodeSelected.bind(this);
   private boundOnWorkflowUpdated = this.onWorkflowUpdated.bind(this);
+  private boundOnTemplateAdd = this.onTemplateAdd.bind(this);
+  private boundOnNodeTypeAdd = this.onNodeTypeAdd.bind(this);
 
   private setupEventListeners(): void {
+    if (this.eventListenersSetup) {
+      console.log('⚠️ Event listeners already setup, skipping...');
+      return;
+    }
+    
+    console.log('🔧 Setting up event listeners...');
     eventBus.on(EVENTS.NODE_SELECTED, this.boundOnNodeSelected);
     eventBus.on(EVENTS.WORKFLOW_UPDATED, this.boundOnWorkflowUpdated);
+    eventBus.on('template-add', this.boundOnTemplateAdd);
+    eventBus.on('node-type-add', this.boundOnNodeTypeAdd);
+    
+    this.eventListenersSetup = true;
   }
 
   private removeEventListeners(): void {
     eventBus.off(EVENTS.NODE_SELECTED, this.boundOnNodeSelected);
     eventBus.off(EVENTS.WORKFLOW_UPDATED, this.boundOnWorkflowUpdated);
+    eventBus.off('template-add', this.boundOnTemplateAdd);
+    eventBus.off('node-type-add', this.boundOnNodeTypeAdd);
+    this.eventListenersSetup = false;
   }
 
   private onNodeSelected(node: any): void {
@@ -241,6 +257,64 @@ export class ApprovalBuilder extends LitElement {
 
   private onWorkflowUpdated(workflow: ApprovalWorkflow): void {
     this.workflow = workflow;
+  }
+
+  private onTemplateAdd(data: { template: any }): void {
+    console.log('📋 Template selected:', data.template);
+    // Create a new workflow based on the template
+    this.createWorkflowFromTemplate(data.template);
+  }
+
+  private onNodeTypeAdd(data: { nodeType: string }): void {
+    console.log('🎯 BUILDER: Received node-type-add event:', data.nodeType);
+    console.log('🎯 BUILDER: Current node count before adding:', this.workflow?.nodes.length || 0);
+    // Add a single node of the specified type
+    this.addNode(data.nodeType as 'start' | 'end' | 'approver' | 'condition' | 'parallel');
+    console.log('🎯 BUILDER: Current node count after adding:', this.workflow?.nodes.length || 0);
+  }
+
+  private createWorkflowFromTemplate(template: any): void {
+    console.log('🏗️ Creating workflow from template:', template.name);
+    
+    // Clear existing workflow
+    this.workflow = {
+      id: `template-${Date.now()}`,
+      name: template.name,
+      description: template.description,
+      version: '1.0.0',
+      nodes: [],
+      connections: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Create nodes based on template type
+    switch (template.name) {
+      case 'Simple Approval':
+        this.addNode('start');
+        this.addNode('approver');
+        this.addNode('end');
+        break;
+      case 'Parallel Approval':
+        this.addNode('start');
+        this.addNode('approver');
+        this.addNode('approver');
+        this.addNode('end');
+        break;
+      case 'Conditional Approval':
+        this.addNode('start');
+        this.addNode('condition');
+        this.addNode('approver');
+        this.addNode('end');
+        break;
+      default:
+        // Default to simple approval
+        this.addNode('start');
+        this.addNode('approver');
+        this.addNode('end');
+    }
+
+    console.log('✅ Workflow created from template:', this.workflow.name);
   }
 
   private async loadWorkflow(): Promise<void> {
@@ -283,6 +357,9 @@ export class ApprovalBuilder extends LitElement {
   }
 
   private addNode(type: 'start' | 'end' | 'approver' | 'condition' | 'parallel'): void {
+    console.log('🔧 addNode called with type:', type);
+    console.log('🔧 Current workflow nodes before:', this.workflow?.nodes.length || 0);
+    
     // Create a new workflow if none exists
     if (!this.workflow) {
       this.workflow = {
@@ -308,6 +385,7 @@ export class ApprovalBuilder extends LitElement {
     };
 
     this.workflow.nodes.push(node);
+    console.log('🔧 Current workflow nodes after:', this.workflow.nodes.length);
     eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
     this.requestUpdate();
   }
@@ -556,6 +634,58 @@ export class ApprovalBuilder extends LitElement {
     }
   }
 
+  private viewSampleRequest(): void {
+    if (!this.workflow) return;
+
+    // Create a sample request with realistic data
+    const sampleRequest = {
+      requestId: 'REQ-2024-001',
+      submittedBy: 'John Smith',
+      submittedDate: new Date().toLocaleDateString(),
+      department: 'IT Department',
+      priority: 'High',
+      formFields: {
+        'Item Description': 'Dell Laptop - XPS 13 (16GB RAM, 512GB SSD)',
+        'Estimated Cost': '$1,299.00',
+        'Quantity': '1',
+        'Business Justification': 'Need for new developer workstation to support upcoming project deadlines. Current laptop is 4 years old and experiencing performance issues.',
+        'Vendor Information': 'Dell Technologies - Preferred vendor with corporate discount'
+      },
+      workflow: {
+        name: this.workflow.name,
+        currentStep: 'Manager Approval',
+        totalSteps: this.workflow.nodes.length,
+        approvers: this.workflow.nodes
+          .filter(n => n.type === 'approver')
+          .map(n => n.configuration.approver || 'Unassigned')
+      }
+    };
+
+    // Display the sample request in a formatted way
+    const message = `
+📋 SAMPLE REQUEST DATA
+
+Request ID: ${sampleRequest.requestId}
+Submitted By: ${sampleRequest.submittedBy}
+Date: ${sampleRequest.submittedDate}
+Department: ${sampleRequest.department}
+Priority: ${sampleRequest.priority}
+
+📝 FORM FIELD VALUES:
+${Object.entries(sampleRequest.formFields).map(([field, value]) => `• ${field}: ${value}`).join('\n')}
+
+🔄 WORKFLOW STATUS:
+• Workflow: ${sampleRequest.workflow.name}
+• Current Step: ${sampleRequest.workflow.currentStep}
+• Total Steps: ${sampleRequest.workflow.totalSteps}
+• Approvers: ${sampleRequest.workflow.approvers.join(', ')}
+
+This is what a real request would look like when submitted through ServiceNow!
+    `.trim();
+
+    alert(message);
+  }
+
   private generateWorkflowSummary(): any {
     if (!this.workflow) return {};
 
@@ -611,6 +741,9 @@ export class ApprovalBuilder extends LitElement {
             <button @click=${() => this.testWorkflow()} ?disabled=${this.isLoading}>
               🧪 Test
             </button>
+            <button @click=${() => this.viewSampleRequest()} ?disabled=${this.isLoading}>
+              📋 View Sample Request
+            </button>
             
             <div class="status-indicator ${this.getStatusIndicator()}">
               ${this.getStatusText()}
@@ -625,10 +758,6 @@ export class ApprovalBuilder extends LitElement {
                 <p>${this.workflow.nodes.length} nodes, ${this.workflow.connections.length} connections</p>
               </div>
               <div class="workflow-tools">
-                <button @click=${() => this.addNode('start')} title="Add Start">🚀</button>
-                <button @click=${() => this.addNode('approver')} title="Add Approver">👤</button>
-                <button @click=${() => this.addNode('condition')} title="Add Condition">❓</button>
-                <button @click=${() => this.addNode('end')} title="Add End">🏁</button>
                 <button @click=${() => this.clearCanvas()} title="Clear Canvas" style="background: #dc3545;">🗑️</button>
                 <button @click=${() => this.createSampleWorkflow()} title="Create Sample Workflow" style="background: #fd7e14;">📋</button>
                 <button @click=${() => this.autoArrange()} title="Auto Arrange" style="background: #20c997;">🔄</button>

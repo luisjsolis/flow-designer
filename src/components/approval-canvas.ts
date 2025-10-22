@@ -162,7 +162,6 @@ export class ApprovalCanvas extends LitElement {
     eventBus.on('node-move-up', this.onNodeMoveUpEventBus.bind(this));
     eventBus.on('node-move-down', this.onNodeMoveDownEventBus.bind(this));
     eventBus.on('template-add', this.onTemplateAdd.bind(this));
-    eventBus.on('node-type-add', this.onNodeTypeAdd.bind(this));
     // Listen for property changes to update the workflow
     this.addEventListener('property-changed', this.onPropertyChanged);
     eventBus.on('property-changed', this.onPropertyChangedEventBus);
@@ -173,6 +172,9 @@ export class ApprovalCanvas extends LitElement {
     eventBus.off(EVENTS.NODE_DELETED, this.onNodeDeleted.bind(this));
     eventBus.off(EVENTS.NODE_MOVED, this.onNodeMoved.bind(this));
     eventBus.off(EVENTS.WORKFLOW_UPDATED, this.onWorkflowUpdated.bind(this));
+    eventBus.off('node-move-up', this.onNodeMoveUpEventBus.bind(this));
+    eventBus.off('node-move-down', this.onNodeMoveDownEventBus.bind(this));
+    eventBus.off('template-add', this.onTemplateAdd.bind(this));
     this.removeEventListener('property-changed', this.onPropertyChanged);
     eventBus.off('property-changed', this.onPropertyChangedEventBus);
   }
@@ -334,10 +336,6 @@ export class ApprovalCanvas extends LitElement {
     // TODO: Implement template addition
   }
 
-  private onNodeTypeAdd = (data: { nodeType: string }): void => {
-    console.log('➕ Adding node type to workflow:', data.nodeType);
-    this.addNode(data.nodeType, { x: 0, y: 0 });
-  }
 
   private onPropertyChanged = (event: CustomEvent): void => {
     const { nodeId, path, value } = event.detail;
@@ -407,15 +405,22 @@ export class ApprovalCanvas extends LitElement {
     // Update connections
     this.updateConnections();
     
-    // Force a complete re-render
-    this.workflow = { ...this.workflow };
-    eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
+    // Force a complete re-render by temporarily clearing and re-setting workflow
+    const tempWorkflow = this.workflow;
+    this.workflow = null;
     this.requestUpdate();
     
-    // Force all nodes to recalculate step numbers after a short delay
+    // Re-set the workflow on the next tick to force complete re-render
     setTimeout(() => {
-      this.updateAllStepNumbers();
-    }, 50);
+      this.workflow = tempWorkflow;
+      eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
+      this.requestUpdate();
+      
+      // Force all nodes to recalculate step numbers
+      setTimeout(() => {
+        this.updateAllStepNumbers();
+      }, 50);
+    }, 10);
     
     console.log('✅ Node moved successfully');
   }
