@@ -1,7 +1,7 @@
 # ServiceNow Flow Designer V2 - Demo Script
 
 ## 🎯 **Demo Overview**
-**Duration:** 5-7 minutes  
+**Duration:** 6-8 minutes  
 **Audience:** ServiceNow Staff Full Stack Engineer Interview  
 **Goal:** Showcase modern architecture solving real customer pain points
 
@@ -13,7 +13,7 @@
 
 ---
 
-## 🎬 **Demo Flow** (5-6 minutes)
+## 🎬 **Demo Flow** (6-7 minutes)
 
 ### **1. Show the Problem** (1 minute)
 **Say:** *"Let me show you what customers struggle with today..."*
@@ -78,7 +78,42 @@
    - Show "Workflow saved!" message
    - Explain optimistic updates
 
-**Key Message:** *"Event-driven architecture, comprehensive validation, and offline-first design ensure enterprise reliability."*
+4. **Click 🚀 Deploy**
+   - Show deployment confirmation dialog
+   - Explain: "This makes the workflow LIVE in ServiceNow"
+   - Show "Workflow is now LIVE in ServiceNow!" message
+
+5. **Click 🧪 Test**
+   - Show test execution and results
+   - Explain: "Validates the workflow logic works correctly"
+
+6. **Click 📋 View Sample Request**
+   - Show what a real request would look like
+   - Display actual form field values (not just template)
+   - Explain: "This is what users see when they submit requests"
+
+**Key Message:** *"Event-driven architecture, comprehensive validation, and offline-first design ensure enterprise reliability. The complete flow from design to deployment to runtime execution."*
+
+### **5. Explain the Complete Workflow Lifecycle** (1 minute)
+**Say:** *"Let me explain what happens after deployment..."*
+
+**Key Points:**
+1. **Flow Designer = Design Tool** (like an architect's blueprint)
+2. **ServiceNow = Runtime Platform** (where the actual work happens)
+3. **After Deploy:** Workflow becomes LIVE in ServiceNow
+4. **Where it appears:**
+   - ServiceNow Admin Console (for management)
+   - ServiceNow Catalog (for users to submit requests)
+   - ServiceNow Task Management (for approvers)
+   - ServiceNow Reports (for analytics)
+
+**The Complete Flow:**
+```
+Design in Flow Designer → Deploy to ServiceNow → Users submit requests → 
+Workflow executes → Approvers get tasks → Final decision delivered
+```
+
+**Key Message:** *"Flow Designer is the design tool. ServiceNow is where the actual workflow execution happens. This separation of concerns allows for better maintainability and scalability."*
 
 ---
 
