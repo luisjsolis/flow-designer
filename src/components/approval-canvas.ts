@@ -407,8 +407,16 @@ export class ApprovalCanvas extends LitElement {
     // Update connections
     this.updateConnections();
     
+    // Force a complete re-render
+    this.workflow = { ...this.workflow };
     eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
     this.requestUpdate();
+    
+    // Force all nodes to recalculate step numbers after a short delay
+    setTimeout(() => {
+      this.updateAllStepNumbers();
+    }, 50);
+    
     console.log('✅ Node moved successfully');
   }
 
