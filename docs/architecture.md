@@ -2,25 +2,11 @@
 
 ## Executive Summary
 
-This document outlines the technical architecture for modernizing ServiceNow's Flow Designer. The architecture addresses key customer pain points through a complete rearchitecture using Web Components, TypeScript, and modern web development practices.
+ The architecture addresses key customer pain points through a complete rearchitecture using Web Components, TypeScript, and modern development practices.
 
 ## Problem Statement
 
 ### Current Flow Designer Limitations
-
-Based on customer research, the main pain points are:
-
-1. **Complex Approval Workflows**: Multi-approver scenarios are difficult to configure
-2. **Poor Debugging Experience**: Limited real-time monitoring and unclear error messages
-3. **Performance Issues**: Slow execution with large datasets and inefficient bulk operations
-4. **Integration Complexity**: Difficult setup for external system connections
-5. **Limited Reusability**: No easy way to create reusable subflows or templates
-
-### Competitive Landscape
-
-- **Microsoft Power Automate**: Better UX but weaker enterprise features
-- **Zapier**: Simpler setup but limited enterprise capabilities
-- **ServiceNow**: Superior enterprise features but poor UX and debugging
 
 ## Solution Architecture
 
@@ -180,31 +166,136 @@ export class FlowCanvas extends LitElement {
 
 ### 2. Event-Driven State Management
 
-**Decision**: Custom event system with immutable state updates
+**Decision**: Custom event system with direct state mutation
 
 **Rationale**:
 - Enables real-time collaboration
-- Decouples components
+- Decouples components (no props drilling)
 - Predictable state updates
 - Better debugging capabilities
+- Simpler than React's immutable patterns
 
 **Implementation**:
 ```typescript
-class FlowStateManager {
-  private state: FlowState;
-  private subscribers: Map<string, Function[]> = new Map();
+// Simple Event Bus - No Redux/Context needed!
+export class EventBus {
+  private listeners: Map<string, Function[]> = new Map();
   
-  subscribe(event: string, callback: Function) {
-    if (!this.subscribers.has(event)) {
-      this.subscribers.set(event, []);
+  emit(event: string, data?: any): void {
+    const callbacks = this.listeners.get(event) || [];
+    callbacks.forEach(callback => {
+      try {
+        callback(data);
+      } catch (error) {
+        console.error(`Error in event callback for ${event}:`, error);
+      }
+    });
+  }
+  
+  on(event: string, callback: Function): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
     }
-    this.subscribers.get(event)!.push(callback);
+    this.listeners.get(event)!.push(callback);
   }
   
-  emit(event: string, data: any) {
-    const callbacks = this.subscribers.get(event) || [];
-    callbacks.forEach(callback => callback(data));
+  off(event: string, callback: Function): void {
+    const callbacks = this.listeners.get(event) || [];
+    const index = callbacks.indexOf(callback);
+    if (index > -1) {
+      callbacks.splice(index, 1);
+    }
   }
+}
+
+// Global event bus instance
+export const eventBus = new EventBus();
+
+// Event types for type safety
+export const EVENTS = {
+  WORKFLOW_UPDATED: 'workflow-updated',
+  NODE_SELECTED: 'node-selected',
+  NODE_ADDED: 'node-added',
+  NODE_EDITED: 'node-edited',
+  NODE_DELETED: 'node-deleted',
+  PROPERTY_CHANGED: 'property-changed',
+  VALIDATION_ERROR: 'validation-error'
+} as const;
+```
+
+**State Flow Example - Adding a Node**:
+```typescript
+// 1. User clicks node type in palette
+@customElement('approval-palette')
+export class ApprovalPalette extends LitElement {
+  private onNodeTypeClick(type: string): void {
+    eventBus.emit('node-type-add', { nodeType: type });
+  }
+}
+
+// 2. Builder listens and creates node
+@customElement('approval-builder')
+export class ApprovalBuilder extends LitElement {
+  private onNodeTypeAdd(data: { nodeType: string }): void {
+    this.addNode(data.nodeType);
+  }
+  
+  private addNode(type: string): void {
+    const node = {
+      id: `node_${Date.now()}`,
+      type: type,
+      name: this.getDefaultNodeName(type),
+      position: { x: 0, y: 0 },
+      configuration: this.getDefaultConfiguration(type),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.workflow!.nodes.push(node);
+    // 3. Notify all components
+    eventBus.emit(EVENTS.WORKFLOW_UPDATED, this.workflow);
+    this.requestUpdate();
+  }
+}
+
+// 4. Canvas automatically updates
+@customElement('approval-canvas')
+export class ApprovalCanvas extends LitElement {
+  private onWorkflowUpdated(workflow: ApprovalWorkflow): void {
+    this.workflow = workflow;
+    this.requestUpdate();
+  }
+}
+```
+
+**Property Change Example**:
+```typescript
+// Direct mutation - much simpler than React's immutable updates!
+private updateNodeProperty(path: string, value: any): void {
+  if (!this.selectedNode) return;
+
+  const keys = path.split('.');
+  let current: any = this.selectedNode;
+  
+  // Navigate to the parent object
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (!current[keys[i]]) {
+      current[keys[i]] = {};
+    }
+    current = current[keys[i]];
+  }
+  
+  // Set the new value
+  current[keys[keys.length - 1]] = value;
+  this.selectedNode.updatedAt = new Date();
+  
+  // Emit event for other components
+  this.dispatchEvent(new CustomEvent('property-changed', {
+    detail: { nodeId: this.selectedNode.id, path, value },
+    bubbles: true
+  }));
+  
+  this.requestUpdate();
 }
 ```
 

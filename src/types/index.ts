@@ -103,3 +103,60 @@ export interface User {
   department?: string;
   role?: string;
 }
+
+// FinOps / Lightdash Integration Types
+
+export interface FinOpsMetrics {
+  totalSpend: {
+    current: number;
+    previous: number;
+    trend: 'up' | 'down';
+    percentageChange: number;
+  };
+  budget: {
+    allocated: number;
+    spent: number;
+    remaining: number;
+    variance: number;
+    variancePercentage: number;
+    daysUntilExhausted: number;
+  };
+  costByService: Array<{
+    service: string;
+    cost: number;
+    percentage: number;
+    trend: 'up' | 'down';
+  }>;
+  costByDepartment: Array<{
+    department: string;
+    cost: number;
+    trend: 'up' | 'down';
+    percentage: number;
+  }>;
+  costByCloudProvider: Array<{
+    provider: string;
+    cost: number;
+    percentage: number;
+  }>;
+  anomalies: Array<{
+    id: string;
+    type: string;
+    severity: 'high' | 'medium' | 'low';
+    message: string;
+    date: Date;
+    cost: number;
+  }>;
+  monthlyTrend: Array<{
+    month: string;
+    cost: number;
+    budget: number;
+  }>;
+}
+
+export interface LightdashDashboard {
+  id: string;
+  name: string;
+  description: string;
+  embedUrl?: string;
+  metrics: FinOpsMetrics;
+}

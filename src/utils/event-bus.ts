@@ -1,5 +1,13 @@
 // Simple Event Bus for Component Communication
 // No Redux/Context needed - just events!
+//
+// ⚠️ SECURITY NOTE: This is a global singleton for convenience in POC/demo.
+// For production, consider using native browser CustomEvent API instead for:
+// - Better security (scoped to component tree)
+// - Better performance (browser-optimized)
+// - Better isolation (no global state)
+//
+// See docs/event-bus-security.md for security considerations and alternatives.
 
 export class EventBus {
   private listeners: Map<string, Function[]> = new Map();
@@ -39,7 +47,9 @@ export class EventBus {
   }
 }
 
-// Global event bus instance
+// Global event bus instance (singleton pattern)
+// ⚠️ SECURITY: Global singleton allows any code to listen/emit events.
+// In production, prefer scoped event buses or native CustomEvent API.
 export const eventBus = new EventBus();
 
 // Event types for type safety

@@ -9,6 +9,7 @@ export class ApprovalBuilder extends LitElement {
   @property({ type: Object }) workflow: ApprovalWorkflow | null = null;
   @state() private isLoading = false;
   @state() private selectedNodeId: string | null = null;
+  @state() private activeView: 'workflow' | 'finops' = 'workflow';
   private eventListenersSetup = false;
 
   static styles = css`
@@ -20,9 +21,52 @@ export class ApprovalBuilder extends LitElement {
 
     .approval-builder {
       display: flex;
+      flex-direction: column;
       height: 100%;
       width: 100%;
       background: #ffffff;
+    }
+
+    .view-tabs {
+      display: flex;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e9ecef;
+      padding: 0 1rem;
+      gap: 0.5rem;
+    }
+
+    .view-tab {
+      padding: 0.75rem 1.5rem;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #6b7280;
+      transition: all 0.2s;
+      margin-bottom: -1px;
+    }
+
+    .view-tab:hover {
+      color: #374151;
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .view-tab.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+      background: white;
+    }
+
+    .view-content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .view-content.hidden {
+      display: none;
     }
 
     .left-panel {
@@ -720,13 +764,29 @@ This is what a real request would look like when submitted through ServiceNow!
   render() {
     return html`
       <div class="approval-builder">
-        <!-- Left Panel - Approval Palette -->
-        <div class="left-panel">
-          <approval-palette></approval-palette>
+        <!-- View Tabs -->
+        <div class="view-tabs">
+          <button 
+            class="view-tab ${this.activeView === 'workflow' ? 'active' : ''}"
+            @click=${() => this.activeView = 'workflow'}>
+            🔧 Workflow Builder
+          </button>
+          <button 
+            class="view-tab ${this.activeView === 'finops' ? 'active' : ''}"
+            @click=${() => this.activeView = 'finops'}>
+            📊 FinOps Dashboard
+          </button>
         </div>
 
-        <!-- Main Content -->
-        <div class="main-content">
+        <!-- Workflow Builder View -->
+        <div class="view-content ${this.activeView !== 'workflow' ? 'hidden' : ''}">
+          <!-- Left Panel - Approval Palette -->
+          <div class="left-panel">
+            <approval-palette></approval-palette>
+          </div>
+
+          <!-- Main Content -->
+          <div class="main-content">
           <!-- Toolbar -->
           <div class="toolbar">
             <button @click=${() => this.saveWorkflow()} ?disabled=${this.isLoading}>
@@ -783,12 +843,18 @@ This is what a real request would look like when submitted through ServiceNow!
           </div>
         </div>
 
-        <!-- Right Panel - Properties -->
-        <div class="right-panel">
-          <approval-properties 
-            .selectedNodeId=${this.selectedNodeId}
-            .workflow=${this.workflow}>
-          </approval-properties>
+          <!-- Right Panel - Properties -->
+          <div class="right-panel">
+            <approval-properties 
+              .selectedNodeId=${this.selectedNodeId}
+              .workflow=${this.workflow}>
+            </approval-properties>
+          </div>
+        </div>
+
+        <!-- FinOps Dashboard View -->
+        <div class="view-content ${this.activeView !== 'finops' ? 'hidden' : ''}">
+          <finops-dashboard></finops-dashboard>
         </div>
       </div>
     `;
