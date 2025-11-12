@@ -82,3 +82,16 @@ jspm_packages/
 
 # DynamoDB Local files
 .dynamodb/
+
+# Database files
+*.db
+
+# Local-only documentation (not pushed to public repo)
+POSTGRESQL_QUICK_START.md
+POSTGRESQL_SETUP.md
+SQL_QUICK_START.md
+docs/sql-practice-exercises.md
+docs/sql-practice-setup.md
+docs/sql-practice-solutions.md
+docs/senior-engineer-interview-answers.md
+docs/sql-aggregate-joins.md
