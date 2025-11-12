@@ -9,7 +9,7 @@ export class ApprovalBuilder extends LitElement {
   @property({ type: Object }) workflow: ApprovalWorkflow | null = null;
   @state() private isLoading = false;
   @state() private selectedNodeId: string | null = null;
-  @state() private activeView: 'workflow' | 'finops' = 'workflow';
+  @state() private activeView: 'workflow' | 'finops' = 'finops';
   private eventListenersSetup = false;
 
   static styles = css`
